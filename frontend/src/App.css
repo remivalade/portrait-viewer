@@ -1,4 +1,6 @@
-.container { max-width:960px; margin:auto; padding:1rem; }
+.wrap { max-width:960px; margin:auto; padding:1rem; font-family:sans-serif; }
 .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:1rem; }
-.card { text-decoration:none; color:#111; border:1px solid #eee; padding:.5rem; border-radius:8px; box-shadow:2px 2px 6px rgba(0,0,0,.05); text-align:center; }
+.card { text-align:center; text-decoration:none; color:#111;
+        border:1px solid #eee; border-radius:8px; padding:.5rem;
+        box-shadow:2px 2px 6px rgba(0,0,0,.05); }
 .card img { width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:6px; }

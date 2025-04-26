@@ -5,6 +5,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "api": "node backend/api.js",
+    "fetch": "node backend/fetch-job.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

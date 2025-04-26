@@ -1,7 +1,7 @@
-import fs   from 'fs';
+import fs from 'fs';
 import path from 'path';
 import express from 'express';
-import cors    from 'cors';
+import cors from 'cors';
 
 const app = express();
 app.use(cors());
@@ -9,7 +9,12 @@ app.use(cors());
 app.get('/api/portraits', (req, res) => {
   const page  = Number(req.query.page  || 1);
   const limit = Number(req.query.limit || 50);
-  const data  = JSON.parse(fs.readFileSync(path.resolve('./backend/cache.json')));
+
+  // read the latest cache
+  const data = JSON.parse(
+    fs.readFileSync(path.resolve('./backend/cache.json'))
+  );
+
   const start = (page - 1) * limit;
   res.json({
     page,
@@ -18,4 +23,6 @@ app.get('/api/portraits', (req, res) => {
   });
 });
 
-app.listen(3001, () => console.log('🖥  API listening on http://localhost:3001'));
+app.listen(3001, () =>
+  console.log('🖥️  API → http://localhost:3001/api/portraits?page=1&limit=3')
+);

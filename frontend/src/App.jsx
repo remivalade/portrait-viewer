@@ -1,39 +1,40 @@
 import { useEffect, useState } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
-import "./App.css";  // optional styling
+import "./App.css";
 
-const PAGE_SIZE = 50;
-const API = "http://localhost:3001/api/portraits";
+const PAGE_SIZE = 60;
+const API = import.meta.env.VITE_API_URL || "http://localhost:3001/api/portraits";
 
-function App() {
+export default function App() {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState([]);
   const [hasMore, setHasMore] = useState(true);
 
-  useEffect(() => fetchNext(), []);
+  useEffect(() => { fetchNext(); }, []);
 
   async function fetchNext() {
     const res  = await fetch(`${API}?page=${page}&limit=${PAGE_SIZE}`);
     const json = await res.json();
-    setItems(i => [...i, ...json.portraits]);
+
+    setItems(prev => [...prev, ...json.portraits]);
     setPage(p => p + 1);
-    if ((page * PAGE_SIZE) >= json.total) setHasMore(false);
+    if (page * PAGE_SIZE >= json.total) setHasMore(false);
   }
 
   return (
-    <div className="container">
+    <div className="wrap">
       <h1>Portrait Gallery</h1>
       <InfiniteScroll
         dataLength={items.length}
         next={fetchNext}
         hasMore={hasMore}
         loader={<p>Loading…</p>}
-        endMessage={<p style={{textAlign:'center'}}>🎉 No more portraits</p>}
+        endMessage={<p style={{textAlign:"center"}}>🎉 No more portraits</p>}
       >
         <div className="grid">
           {items.map(p => (
-            <a key={p.username} href={p.profileUrl} target="_blank" rel="noreferrer" className="card">
-              <img src={p.imageUrl} alt={p.username} />
+            <a key={p.id} className="card" href={p.profileUrl} target="_blank" rel="noreferrer">
+              <img src={p.imageUrl} alt={p.username} loading="lazy" />
               <span>{p.username}</span>
             </a>
           ))}
@@ -42,5 +43,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
