@@ -1,13 +1,1 @@
-/* src/index.css — point d’entrée Tailwind */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* tes ajouts éventuels : */
-.wrap {
-  @apply max-w-screen-lg mx-auto p-4 font-sans;
-}
-
-.grid-auto {
-  @apply grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4;
-}
+@import "tailwindcss";

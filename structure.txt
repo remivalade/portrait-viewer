@@ -1,0 +1,35 @@
+.
+|____.DS_Store
+|____frontend
+| |____index.html
+| |____.DS_Store
+| |____node_modules
+| |____vite.config.js
+| |____README.md
+| |____public
+| | |____vite.svg
+| |____.gitignore
+| |____package-lock.json
+| |____package.json
+| |____eslint.config.js
+| |____src
+| | |____.DS_Store
+| | |____App.css
+| | |____index.css
+| | |____main.jsx
+| | |____App.jsx
+| | |____assets
+|____LICENSE
+|____node_modules
+|____backend
+| |____.DS_Store
+| |____fetch-job.js
+| |____cache.json
+| |____api.js
+| |____meta.json
+|____README.md
+|____package-lock.json
+|____package.json
+|____.gitattributes
+|____.git
+|____structure.txt
