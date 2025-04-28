@@ -5,45 +5,30 @@
 
 @import "tailwindcss";
 
-/* Remove the @layer base rule */
-
-/* Add Custom CSS for Body Background */
+/* Apply Dark Mode Styles Directly to Body */
 body {
-  /* Apply font-sans globally if needed */
-  @apply font-sans;
+  @apply font-sans; /* Keep base font */
   min-height: 100vh;
-  /* Base background color (optional, can be one of the gradient colors) */
-  background-color: #fff5f7; /* Light pastel pink */
-
-  /* Layer multiple radial gradients for the aurora/mesh effect */
-  /* Format: radial-gradient(shape size at position, color-stop1, color-stop2, ...) */
-  background-image:
-    /* Soft Pink blob - top left */
-    radial-gradient(circle 500px at 0% 0%, rgba(251, 182, 206, 0.4), transparent 80%),
-    /* Soft Orange blob - bottom right */
-    radial-gradient(circle 600px at 100% 100%, rgba(254, 215, 170, 0.4), transparent 80%),
-    /* Soft Yellow/Gold blob - maybe center or another corner */
-    radial-gradient(circle 400px at 50% 50%, rgba(253, 230, 138, 0.3), transparent 80%);
-
-  /* Ensure content doesn't break gradient positioning */
   background-attachment: fixed;
+
+  /* Dark base color */
+  background-color: #111827; /* Tailwind gray-900 */
+  /* Dark gradient */
+  background-image:
+    radial-gradient(circle 500px at 0% 100%, rgba(30, 58, 138, 0.3), transparent 80%),
+    radial-gradient(circle 600px at 100% 0%, rgba(76, 29, 149, 0.3), transparent 80%);
 }
-/* Add Noise Overlay */
+
+/* Noise Overlay (remains the same) */
 body::before {
   content: "";
-  position: fixed; /* Or absolute if body has relative position */
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  /* Find a seamless transparent noise PNG online */
-  /* Example placeholder URL - replace with a real one */
-  background-image: url('https://example.com/path/to/transparent-noise.png');
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: url('/nnnoise.svg'); /* Ensure SVG is in public folder */
   background-repeat: repeat;
-  opacity: 0.03; /* Adjust opacity for subtle effect */
-  z-index: -1; /* Place it behind the main content */
-  pointer-events: none; /* Make it non-interactive */
+  opacity: 0.03; /* Adjust as desired */
+  z-index: -1;
+  pointer-events: none;
 }
 
-
-/* You can add other custom component or utility styles here if needed */
+/* Remove any other .dark body rules if they exist */
