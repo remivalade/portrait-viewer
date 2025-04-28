@@ -8,14 +8,29 @@ export default defineConfig({
     react(),
     tailwindcss(), // Add the plugin here
   ],
-  // Remove or comment out this entire css.postcss section if it exists:
+
+  // --- ADD THIS SECTION ---
+  server: {
+    proxy: {
+      // Proxy requests starting with /api to your local backend server
+      '/api': {
+        target: 'http://localhost:3001', // Default backend port
+        changeOrigin: true, // Recommended for virtual hosted sites
+        // No rewrite needed usually if backend expects /api path
+        // rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
+  }
+  // --- END OF ADDED SECTION ---
+
+  // Remove or comment out this entire css.postcss section if it exists
+  // (already looks commented/removed in the version you provided):
   // css: {
   //   postcss: {
   //     plugins: [
-  //       // You might have had @tailwindcss/postcss here before - remove it
-  //       // autoprefixer might also be here - it's better handled automatically or via postcss.config.js if needed
+  //       // ...
   //     ],
   //   },
   // },
-  // ... other config if any
+
 });

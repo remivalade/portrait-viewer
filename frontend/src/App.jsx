@@ -5,7 +5,7 @@ import InfiniteScroll from 'react-infinite-scroll-component';
 import PortraitCard from './components/PortraitCard';
 import SkeletonCard from './components/SkeletonCard'; // Ensure SkeletonCard is imported
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/portraits';
+const API_URL = import.meta.env.VITE_API_URL || '/api/portraits';
 const ITEMS_PER_PAGE = 60;
 
 // --- Shuffle Function (Keep) ---
