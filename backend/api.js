@@ -1,142 +1,177 @@
-import fs from 'fs';
-import path from 'path';
 import express from 'express';
 import cors from 'cors';
+import sqlite3 from 'sqlite3';
+import path from 'path';
+import fs from 'fs'; // Keep fs only for checking DB file existence/stats if needed
 
 const app = express();
 app.use(cors());
 
-// --- Début des modifications ---
+const dbPath = path.resolve('./backend/portraits.sqlite');
+const verboseSqlite3 = sqlite3.verbose(); // Use verbose for better logging
 
-const cacheFilePath = path.resolve('./backend/cache.json');
-const metaFilePath = path.resolve('./backend/meta.json'); // Chemin vers meta.json
-let cachedPortraits = []; // Variable pour stocker les données en mémoire
-let cacheStatus = { // Variable pour stocker le statut du chargement du cache
-  loaded: false,
-  timestamp: null,
-  error: null,
-  count: 0
-};
-let lastMetaReadStatus = { // Pour stocker le statut de la lecture de meta.json par l'API
-  timestamp: null,
-  error: null
-}
-
-// Fonction pour charger (ou recharger) les données depuis cache.json
-function loadCache() {
-  const now = new Date();
-  console.log(`🔄 [${now.toISOString()}] Attempting to load cache from ${cacheFilePath}...`);
-  try {
-    const fileData = fs.readFileSync(cacheFilePath, 'utf-8');
-    cachedPortraits = JSON.parse(fileData);
-    cacheStatus = {
-      loaded: true,
-      timestamp: now.toISOString(),
-      error: null,
-      count: cachedPortraits.length
-    };
-    console.log(`✅ Cache loaded successfully. ${cacheStatus.count} portraits in memory.`);
-  } catch (error) {
-    cacheStatus = {
-      loaded: false,
-      timestamp: now.toISOString(),
-      error: error.message, // Stocker le message d'erreur
-      count: 0
-    };
-    if (error.code === 'ENOENT') {
-      console.error(`❌ Error loading cache: File not found at ${cacheFilePath}. Starting with empty cache.`);
-      cachedPortraits = [];
-    } else if (error instanceof SyntaxError) {
-      console.error(`❌ Error loading cache: Invalid JSON in ${cacheFilePath}. Starting with empty cache.`, error);
-      cachedPortraits = [];
-    } else {
-      console.error(`❌ An unexpected error occurred while loading cache:`, error);
-      cachedPortraits = [];
-    }
+// --- SQLite Database Connection ---
+// Use OPEN_READONLY for the API server as it shouldn't modify data
+// Use OPEN_CREATE flag only if you absolutely need the API server to create the DB file
+const db = new verboseSqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
+  if (err) {
+    console.error(`❌ Error connecting to SQLite database at ${dbPath}:`, err.message);
+    // Exit or handle gracefully if DB connection fails - essential for API functionality
+    // For simplicity here, we log the error. In production, you might exit or return errors on all endpoints.
+  } else {
+    console.log(`✅ Connected to the SQLite database: ${dbPath}`);
   }
-}
+});
 
-// Charger le cache au démarrage de l'application
-loadCache();
-
-// --- Fin des modifications ---
-
-
-app.get('/api/portraits', (req, res) => {
-  const page = Number(req.query.page || 1);
-  const limit = Number(req.query.limit || 50);
-  const data = cachedPortraits;
-  const start = (page - 1) * limit;
-  const total = data.length;
-  const portraitsToSend = data.slice(start, start + limit);
-
-  res.json({
-    page,
-    limit,
-    total,
-    portraits: portraitsToSend
+// Graceful shutdown
+process.on('SIGINT', () => {
+  db.close((err) => {
+    if (err) {
+      console.error('❌ Error closing database connection:', err.message);
+    } else {
+      console.log('ℹ️ Database connection closed.');
+    }
+    process.exit(0);
   });
 });
 
-// --- Début du nouvel endpoint /api/status ---
-app.get('/api/status', (req, res) => {
-  let metaData = null;
-  let cacheFileInfo = null;
-  const now = new Date();
-  lastMetaReadStatus.timestamp = now.toISOString(); // Mettre à jour le timestamp de lecture
-  lastMetaReadStatus.error = null; // Réinitialiser l'erreur
 
-  // Lire les informations du fichier cache.json (date de modif)
+// --- API Endpoints ---
+
+app.get('/api/portraits', (req, res) => {
+  const page = Math.max(1, Number(req.query.page || 1)); // Ensure page is at least 1
+  const limit = Math.max(1, Number(req.query.limit || 50)); // Ensure limit is at least 1
+  const offset = (page - 1) * limit;
+
+  const countSql = `SELECT COUNT(*) as total FROM portraits;`;
+  const selectSql = `SELECT id, username, image_url, profile_url FROM portraits ORDER BY id ASC LIMIT ? OFFSET ?;`;
+
+  // Use db.get for single row result (count) and db.all for multiple rows
+  db.get(countSql, [], (err, countRow) => {
+    if (err) {
+      console.error('❌ Database error getting total count:', err.message);
+      return res.status(500).json({ error: 'Failed to retrieve portrait count' });
+    }
+
+    const total = countRow?.total || 0;
+
+    db.all(selectSql, [limit, offset], (err, portraitRows) => {
+      if (err) {
+        console.error('❌ Database error getting portraits:', err.message);
+        return res.status(500).json({ error: 'Failed to retrieve portraits' });
+      }
+
+      res.json({
+        page,
+        limit,
+        total,
+        portraits: portraitRows || [] // Ensure portraits is always an array
+      });
+    });
+  });
+});
+
+
+app.get('/api/status', (req, res) => {
+  const now = new Date();
+  let dbStats = null;
+
+  // Optional: Get database file stats
   try {
-    const stats = fs.statSync(cacheFilePath);
-    cacheFileInfo = {
+    const stats = fs.statSync(dbPath);
+    dbStats = {
       lastModified: stats.mtime.toISOString(),
       size: stats.size
     };
-  } catch (error) {
-    // Si le fichier cache n'existe pas, statSync échouera aussi
-    if (error.code !== 'ENOENT') {
-      console.error(`❌ Error getting cache file stats:`, error);
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      console.warn(`⚠️ Could not get stats for DB file ${dbPath}:`, err.message);
     }
-    // L'info d'erreur est déjà dans cacheStatus
+    // If ENOENT, the DB doesn't exist yet, which is handled by job status query
   }
 
-  // Essayer de lire meta.json pour le statut de fetch-job
-  try {
-    metaData = JSON.parse(fs.readFileSync(metaFilePath, 'utf-8'));
-  } catch (error) {
-    lastMetaReadStatus.error = `Failed to read or parse meta.json: ${error.message}`;
-    console.error(`❌ ${lastMetaReadStatus.error}`);
-    // Ne pas écraser les données meta potentiellement utiles déjà présentes
-    // metaData reste null ou garde sa dernière valeur lue (si on implémentait un cache pour meta)
-  }
+  // Get job status and portrait count from DB
+  const statusSql = `SELECT * FROM job_status WHERE job_name = 'fetch-job' LIMIT 1;`;
+  const countSql = `SELECT COUNT(*) as count FROM portraits;`;
 
-  res.json({
-    server: {
-      status: 'OK',
-      currentTime: now.toISOString()
-    },
-    cache: {
-      loaded: cacheStatus.loaded,
-      lastLoadAttempt: cacheStatus.timestamp,
-      loadError: cacheStatus.error,
-      portraitCount: cacheStatus.count,
-      fileLastModified: cacheFileInfo?.lastModified || null,
-      fileSize: cacheFileInfo?.size || null
-    },
-    fetchJob: { // Données issues de meta.json (nécessite modif fetch-job.js)
-      metaFileReadStatus: lastMetaReadStatus.error ? 'Error' : 'OK',
-      metaFileLastError: lastMetaReadStatus.error,
-      lastRunTimestamp: metaData?.lastRunTimestamp || null, // À ajouter dans meta.json par fetch-job.js
-      lastRunStatus: metaData?.lastRunStatus || 'Unknown', // À ajouter ('success' / 'error')
-      lastRunError: metaData?.lastRunError || null, // À ajouter si erreur
-      highestIdSynced: metaData?.highestIdSaved || null,
-      unpublishedIdsCount: metaData?.unpublishedIds?.length ?? null // Utiliser ?? pour gérer le cas où unpublishedIds n'existe pas
+  db.get(statusSql, [], (err, statusRow) => {
+    if (err && err.message.includes('no such table: job_status')) {
+        console.warn('⚠️ job_status table not found. Fetch job likely hasn\'t run yet.');
+        // Return default/empty status if table doesn't exist
+        return db.get(countSql, [], (countErr, countRow) => {
+             res.json({
+                server: { status: 'OK', currentTime: now.toISOString() },
+                database: {
+                    fileStatus: dbStats ? 'Exists' : 'NotFound',
+                    ...dbStats,
+                    portraitCount: countErr ? null : (countRow?.count ?? 0),
+                    connection: 'OK' // Assumes connection was OK if we reached here
+                },
+                fetchJob: { status: 'NotRunYet' } // Indicate job hasn't run
+             });
+        });
+    } else if (err) {
+      console.error('❌ Database error getting job status:', err.message);
+      // Can't reliably get status, return an error state
+       return db.get(countSql, [], (countErr, countRow) => {
+           res.status(500).json({
+                server: { status: 'OK', currentTime: now.toISOString() },
+                database: {
+                    fileStatus: dbStats ? 'Exists' : 'ErrorChecking',
+                     ...dbStats,
+                     portraitCount: countErr ? null : (countRow?.count ?? 0),
+                     connection: 'OK'
+                },
+                fetchJob: { status: 'ErrorReadingStatus', error: err.message }
+           });
+       });
     }
+
+    // Get count even if status query succeeded
+    db.get(countSql, [], (countErr, countRow) => {
+        if (countErr) {
+             console.error('❌ Database error getting portrait count:', countErr.message);
+             // Return status info but indicate count error
+        }
+
+        let unpublishedIdsCount = null;
+        if (statusRow?.unpublished_ids_json) {
+            try {
+                const ids = JSON.parse(statusRow.unpublished_ids_json);
+                unpublishedIdsCount = Array.isArray(ids) ? ids.length : null;
+            } catch (parseErr) {
+                console.error('❌ Error parsing unpublished_ids_json from DB:', parseErr);
+            }
+        }
+
+        res.json({
+            server: {
+                status: 'OK',
+                currentTime: now.toISOString()
+            },
+            database: {
+                fileStatus: dbStats ? 'Exists' : 'NotFound', // Or ErrorChecking if stat failed
+                ...dbStats,
+                portraitCount: countErr ? null : (countRow?.count ?? 0),
+                connection: 'OK' // DB connection must be ok to get here
+            },
+            fetchJob: { // Data from job_status table
+                status: statusRow ? 'OK' : 'NotRunYet', // If statusRow is null/undefined
+                lastRunTimestamp: statusRow?.last_run_timestamp || null,
+                lastRunStatus: statusRow?.last_run_status || 'Unknown',
+                lastRunError: statusRow?.last_run_error || null,
+                highestIdSynced: statusRow?.highest_id_processed || null,
+                unpublishedIdsCount: unpublishedIdsCount
+                // cid_map is likely too large/not useful for status endpoint
+            }
+        });
+    });
   });
 });
-// --- Fin du nouvel endpoint /api/status ---
+
 
 app.listen(3001, () =>
-  console.log('🖥️  API → http://localhost:3001/api/portraits?page=1&limit=3\n📊  Status → http://localhost:3001/api/status')
+  console.log('🚀 API Server running with SQLite backend.\n' +
+              '✅ Portraits endpoint → http://localhost:3001/api/portraits?page=1&limit=3\n' +
+              '📊 Status endpoint → http://localhost:3001/api/status')
 );
