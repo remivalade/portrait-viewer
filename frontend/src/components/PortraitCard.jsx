@@ -16,7 +16,7 @@ const PortraitCard = ({ portrait }) => {
   // Styles for Permanent Dark Mode & Hover Glow (remains the same)
   return (
     <a
-      href={portrait.profile_Url}
+      href={portrait.profile_url}
       target="_blank"
       rel="noopener noreferrer"
       className="card block p-4 rounded-lg shadow transition-all duration-200 ease-in-out transform hover:-translate-y-1
