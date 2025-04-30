@@ -1,40 +1,22 @@
 // frontend/src/components/PortraitCard.jsx
 import React from 'react';
 
-// Basic fallback image in SVG format
-const FallbackAvatar = () => (
-  <svg className="w-full h-full text-gray-500" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
-  </svg>
-);
-
+// --- REMOVED: FallbackAvatar SVG component definition ---
 
 const PortraitCard = ({ portrait }) => {
-  // Removed the imgError state as we'll handle missing sources directly
-  // const [imgError, setImgError] = React.useState(false);
-  // const handleImageError = () => { setImgError(true); }; // Keep onError logic on img tag though
-
-  // --- Determine Avatar Source ---
+  // Determine Avatar Source (logic remains the same)
   let avatarSrc = null;
   if (portrait.image_url) {
-      // Prefer IPFS image_url if available
       avatarSrc = portrait.image_url;
-      console.log(`Using IPFS image for ${portrait.username}: ${avatarSrc}`); // Optional logging
   } else if (portrait.image_arweave_tx) {
-      // Fallback to Arweave transaction ID if IPFS is missing
-      avatarSrc = `https://irys.portrait.host/${portrait.image_arweave_tx}`;
-      console.log(`Using Arweave image for ${portrait.username}: ${avatarSrc}`); // Optional logging
-  } else {
-      console.log(`No image source found for ${portrait.username}`); // Optional logging
+      avatarSrc = `https://arweave.net/${portrait.image_arweave_tx}`;
   }
-  // If neither is present, avatarSrc remains null
   // --- End Determine Avatar Source ---
 
-
-  // Styles for Permanent Dark Mode & Hover Glow
+  // Styles for Permanent Dark Mode & Hover Glow (remains the same)
   return (
     <a
-      href={portrait.profile_url}
+      href={portrait.profileUrl}
       target="_blank"
       rel="noopener noreferrer"
       className="card block p-4 rounded-lg shadow transition-all duration-200 ease-in-out transform hover:-translate-y-1
@@ -43,29 +25,39 @@ const PortraitCard = ({ portrait }) => {
                  border border-transparent"
       title={`View ${portrait.username}'s profile on Portrait.so`}
     >
-      <div className="w-24 h-24 mx-auto mb-3 overflow-hidden rounded-full bg-gray-700 border-2 border-gray-600 flex items-center justify-center"> {/* Added flex center for fallback */}
-        {/* --- Conditionally render image or fallback --- */}
+      {/* Container for the avatar image */}
+      <div className="w-24 h-24 mx-auto mb-3 overflow-hidden rounded-full bg-gray-700 border-2 border-gray-600 flex items-center justify-center">
+        {/* --- Updated Conditional Rendering --- */}
         {avatarSrc ? (
+          // If we have a source URL (IPFS or Arweave)
           <img
-            src={avatarSrc} // Use the determined source URL
+            key={avatarSrc} // Add key to help React differentiate if src changes
+            src={avatarSrc}
             alt={`${portrait.username}'s profile picture`}
             className="w-full h-full object-cover"
-            // Keep onError to handle cases where the URL is valid but image fails to load
+            // Updated onError: If primary src fails, try loading the default PNG
             onError={(e) => {
-                // Optionally hide the broken image and show fallback,
-                // or let the browser show its broken image icon.
-                // For simplicity, let's rely on the background + FallbackAvatar if needed below
-                // Or we could add state back:
-                // if (!imgError) setImgError(true); // Re-introduce imgError state if needed
-                e.target.style.display='none'; // Hide broken img
+              // Prevent infinite loop if default also fails
+              if (e.target.src !== '/default-avatar.png') {
+                  e.target.onerror = null; // Prevent infinite loop
+                  e.target.src = '/default-avatar.png';
+                  console.warn(`Failed to load ${avatarSrc}, falling back to default.`); // Optional warning
+              } else {
+                 // If default fails, just hide (optional)
+                 e.target.style.display='none';
+              }
             }}
             loading="lazy"
           />
         ) : (
-          // If no avatarSrc determined, show FallbackAvatar immediately
-          <FallbackAvatar />
+          // If no avatarSrc determined initially, render the default PNG directly
+          <img
+            src="/default-avatar.png" // Path relative to public folder
+            alt="Default avatar"
+            className="w-full h-full object-cover" // Style as needed
+          />
         )}
-        {/* --- End Conditional Render --- */}
+        {/* --- End Updated Conditional Rendering --- */}
       </div>
       <p className="text-center text-sm font-medium text-purple-300 truncate">
         {portrait.username}
