@@ -99,7 +99,17 @@ function App() {
       {/* Adjust header padding if needed */}
       <header className="text-center mb-12 pt-4">
         {/* Use dark mode title color directly */}
-        <h1 className="text-4xl font-bold mb-2 text-gray-100 font-['Pacifico',_cursive]">Discover new portraits!</h1>
+        <h1 className="text-4xl font-bold mb-2 text-black dark:text-gray-100
+               flex items-center justify-center space-x-3"> {/* Added flex, items-center, justify-center, space-x-3 */}
+    {/* Logo Image */}
+    <img
+        src="/portrait-viewer-logo.png" // Path relative to public folder
+        alt="Portrait Viewer logo"
+        className="h-10 w-auto" // Adjust height as needed, width will be auto
+    />
+    {/* Title Text */}
+    <span>Discover new portraits!</span> {/* Wrap text in span */}
+      </h1>
         {/* Use dark mode button styles directly */}
         <a
             href="https://portrait.so/" target="_blank" rel="noopener noreferrer"
