@@ -1,4 +1,3 @@
-
 // ----------------------------------------------------------
 // API Server using Express and SQLite
 // ----------------------------------------------------------
@@ -173,16 +172,15 @@ app.get('/api/status', async (req, res) => {
 
 // --- Start Server ---
 app.listen(PORT, () => {
-  console.log(\`🖥️ API Server started successfully.\`);
-  console.log(\`   Listening on: http://localhost:\${PORT}\`);
-  console.log(\`   Portraits endpoint: http://localhost:\${PORT}/api/portraits?page=1&limit=10\`);
-  console.log(\`   Status endpoint:    http://localhost:\${PORT}/api/status\`);
+  console.log(`🖥️ API Server started successfully.`);
+  console.log(`   Listening on: http://localhost:${PORT}`);
+  console.log(`   Portraits endpoint: http://localhost:${PORT}/api/portraits?page=1&limit=10`);
+  console.log(`   Status endpoint:    http://localhost:${PORT}/api/status`);
 });
 
 // --- Graceful Shutdown ---
 process.on('SIGINT', () => {
-  console.log('
-🔌 SIGINT received. Shutting down API server...');
+  console.log('🔌 SIGINT received. Shutting down API server...');
   db.close((err) => {
     if (err) {
       console.error('❌ Error closing database connection during shutdown:', err.message);
