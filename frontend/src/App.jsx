@@ -101,7 +101,7 @@ function App() {
         {/* Use dark mode title color directly */}
         <h1 className="text-4xl font-bold mb-2 text-black dark:text-gray-100
                flex items-center justify-center space-x-3
-               font-serif">
+               font-sans-serif">
     {/* Logo Image */}
     <img
         src="/portrait-viewer-logo.png" // Path relative to public folder
@@ -111,7 +111,7 @@ function App() {
     {/* Title Text */}
             <span>
                 Discover {/* Text before gradient */}
-                <span className="bg-gradient-to-r from-purple-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-purple-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent font-serif italic">
                     {/* Apply gradient classes to this span */}
                     new
                 </span>
