@@ -94,21 +94,25 @@ function App() {
     // Use dark mode text color as default
     <div className="max-w-screen-lg mx-auto px-4 py-8 text-gray-100">
 
-      {/* REMOVED Dark Mode Toggle Button */}Ò
+      {/* REMOVED Dark Mode Toggle Button */}
 
       {/* Adjust header padding if needed */}
-      <header className="text-center mb-12 pt-4">
-        {/* Use dark mode title color directly */}
-        <h1 className="text-4xl font-bold mb-2 text-black dark:text-gray-100
-               flex items-center justify-center space-x-3
-               font-sans-serif">
-    {/* Logo Image */}
-    <img
-        src="/portrait-viewer-logo.png" // Path relative to public folder
-        alt="Portrait Viewer logo"
-        className="h-10 w-auto" // Adjust height as needed, width will be auto
-    />
-    {/* Title Text */}
+  <header className="text-center mb-12 pt-4">
+      {/* ADDED: Wrapper div for vertical stacking and centering */}
+      <div className="flex flex-col items-center">
+
+          {/* H1: Reverted back to flex (not inline-flex), keep justify-center */}
+          <h1 className="mb-2 text-black dark:text-gray-100
+                 flex items-center justify-center space-x-2 md:space-x-3
+                 text-3xl md:text-4xl
+                 font-sans-serif">
+              {/* Logo Image */}
+              <img
+                  src="/portrait-viewer-logo.png"
+                  alt="Portrait Viewer logo"
+                  className="h-10 w-auto"
+              />
+              {/* Title Text */}
             <span>
                 Discover {/* Text before gradient */}
                 <span className="bg-gradient-to-r from-purple-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent font-serif italic">
@@ -116,17 +120,17 @@ function App() {
                     new
                 </span>
                 {/* Text after gradient */} portraits!
-            </span>    
-      </h1>
-        {/* Use dark mode button styles directly */}
-        <a
-            href="https://portrait.so/" target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center space-x-2 mt-4 px-4 py-2 bg-gray-700 border border-gray-600 hover:bg-gray-600 text-gray-200 rounded-lg shadow-sm font-medium transition-colors duration-150"
-        >
-            <svg className="w-5 h-5" viewBox="0 0 58 58" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" fillRule="evenodd" d="M40 8.5H18A9.5 9.5 0 0 0 8.5 18v22a9.5 9.5 0 0 0 9.5 9.5h22a9.5 9.5 0 0 0 9.5-9.5V18A9.5 9.5 0 0 0 40 8.5ZM18 0C8.059 0 0 8.059 0 18v22c0 9.941 8.059 18 18 18h22c9.941 0 18-8.059 18-18V18c0-9.941-8.059-18-18-18H18Z" clipRule="evenodd"></path></svg>
-            <span>Create Your Own</span>
-        </a>
-      </header>
+            </span> 
+          </h1>
+
+          {/* Create Button (remains the same, now correctly below h1) */}
+          
+              <p className="mt-4 text-base text-gray-600 dark:text-gray-400 max-w-2xl mx-auto"> {/* Added text styles, max-width */}
+                  Scroll to find live "portraits", decentralized micro-websites where people share who they are, what they do, what they are working on and many other things!
+              </p>
+
+      </div> {/* End of wrapper div */}
+  </header>
 
       {/* Error message - use dark styles directly */}
       {error && !isLoading && (
