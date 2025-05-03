@@ -19,14 +19,16 @@ const PortraitCard = ({ portrait }) => {
       href={portrait.profile_url}
       target="_blank"
       rel="noopener noreferrer"
-      className="card block p-4 rounded-lg shadow transition-all duration-200 ease-in-out transform hover:-translate-y-1
-                 bg-gray-800/60
-                 hover:shadow-[0_0_15px_rgba(255,255,255,0.5)]
-                 border border-transparent"
+      className="card block p-4 rounded-lg shadow transition-all duration-200 ease-in-out
+                 bg-gray-800/60 border border-transparent                     // Base styles
+                 hover:shadow-[0_0_15px_rgba(255,255,255,0.5)]                // Existing glow
+                 hover:scale-105                                             // NEW: Scale up on hover
+                 hover:border-purple-400/50                                  // NEW: Soft border highlight on hover
+                 group"
       title={`View ${portrait.username}'s profile on Portrait.so`}
     >
       {/* Container for the avatar image */}
-      <div className="w-24 h-24 mx-auto mb-3 overflow-hidden rounded-full bg-gray-700 border-2 border-gray-600 flex items-center justify-center">
+      <div className="w-24 h-24 mx-auto mb-3 overflow-hidden rounded-full bg-gray-700 border-2 border-gray-600 group-hover:border-purple-400/70 transition-colors duration-200 flex items-center justify-center">
         {/* --- Updated Conditional Rendering --- */}
         {avatarSrc ? (
           // If we have a source URL (IPFS or Arweave)
@@ -59,7 +61,7 @@ const PortraitCard = ({ portrait }) => {
         )}
         {/* --- End Updated Conditional Rendering --- */}
       </div>
-      <p className="text-center text-sm font-medium text-purple-300 truncate">
+      <p className="text-center text-sm font-medium text-purple-300 truncate group-hover:text-purple-200 transition-colors duration-200">
         {portrait.username}
       </p>
     </a>
