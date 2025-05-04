@@ -133,6 +133,17 @@ async function initializeDb() {
     )
   `);
   console.log("✅ 'job_status' table ensured.");
+
+    // *** Création de la table FTS5 ***
+    await dbRun(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS portraits_fts USING fts5(
+          username,                        -- Colonne à indexer pour la recherche
+          content='portraits',             -- Table source du contenu
+          content_rowid='id',              -- Colonne ID de la table source
+          tokenize='unicode61 remove_diacritics 2' -- Pour recherche insensible casse/accents
+      );
+    `);
+    console.log("✅ 'portraits_fts' virtual table ensured for searching.");
   console.log("✅ Database schema initialization complete.");
 }
 
@@ -401,7 +412,7 @@ async function runFetchJob() {
              username: cleanedTitle,
              imageUrl: cid ? IPFS_GATEWAY + cid : null,
              profileUrl: PUBLIC_PAGE + encodeURIComponent(user),
-             imageArweaveTx: arweaveTx // Will be null if not found or API failed
+             imageArweaveTx: arweaveTx ? `https://irys.portrait.host/${arweaveTx}` : null // Will be null if not found or API failed
          });
 
          await sleep(GAP_MS); // Throttle API requests

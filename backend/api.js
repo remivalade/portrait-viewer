@@ -169,6 +169,61 @@ app.get('/api/status', async (req, res) => {
   res.json(responseStatus);
 });
 
+  // 3. Search Portraits
+
+app.get('/api/portraits/search', async (req, res) => {
+  const query = req.query.q || ''; // Terme de recherche
+  const page = Number(req.query.page || 1);
+  const limit = Number(req.query.limit || 50); // Gardons la même limite par défaut
+
+  // Validation simple
+  if (typeof query !== 'string' || query.trim().length < 3) {
+    // Retourne un résultat vide si la recherche est trop courte ou invalide
+    // Ou vous pourriez retourner une erreur 400
+    return res.json({ page: 1, limit, total: 0, portraits: [] });
+  }
+  if (page < 1 || limit < 1 || limit > 100) {
+    return res.status(400).json({ error: 'Invalid page or limit parameter.' });
+  }
+
+  const offset = (page - 1) * limit;
+  const searchTerm = query.trim(); // Utiliser le terme nettoyé
+
+  try {
+    // Utiliser Promise.all pour exécuter les requêtes de comptage et de données en parallèle
+    const [totalResult, portraitsResult] = await Promise.all([
+      // Compte le nombre total de résultats correspondants
+      dbGet(
+        `SELECT COUNT(*) as total
+         FROM portraits p JOIN portraits_fts fts ON p.id = fts.rowid
+         WHERE portraits_fts MATCH ?`,
+        [searchTerm] // Le terme pour MATCH
+      ),
+      // Récupère les données paginées correspondantes
+      dbAll(
+        `SELECT p.id, p.username, p.image_url, p.profile_url, p.image_arweave_tx
+         FROM portraits p JOIN portraits_fts fts ON p.id = fts.rowid
+         WHERE portraits_fts MATCH ?
+         ORDER BY p.id ASC -- Ou un autre tri si pertinent (ex: rank FTS)
+         LIMIT ? OFFSET ?`,
+        [searchTerm, limit, offset] // Paramètres pour MATCH, LIMIT, OFFSET
+      )
+    ]);
+
+    const total = totalResult?.total || 0;
+
+    res.json({
+      page,
+      limit,
+      total,
+      portraits: portraitsResult || [] // Assure que c'est toujours un tableau
+    });
+
+  } catch (error) {
+    console.error(`❌ Error searching portraits (query: ${searchTerm}, page: ${page}, limit: ${limit}):`, error.message);
+    res.status(500).json({ error: 'Failed to search portraits.' });
+  }
+});
 
 // --- Start Server ---
 app.listen(PORT, () => {
