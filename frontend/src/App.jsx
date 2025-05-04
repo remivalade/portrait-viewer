@@ -1,110 +1,147 @@
 // frontend/src/App.jsx
 
-// Added useMemo to imports
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+// Removed useMemo, kept others
+import React, { useState, useEffect, useCallback } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import PortraitCard from './components/PortraitCard';
 import SkeletonCard from './components/SkeletonCard';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api/portraits';
+// Use actual API base provided by api.js structure
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''; // Use VITE_API_URL or empty string
+const PORTRAITS_API_ENDPOINT = `${API_BASE_URL}/api/portraits`;
+const SEARCH_API_ENDPOINT = `${API_BASE_URL}/api/portraits/search`; // New endpoint
+
 const ITEMS_PER_PAGE = 60;
-const SEARCH_THRESHOLD = 3; // Minimum characters to trigger search
+const SEARCH_THRESHOLD = 3;
+const DEBOUNCE_DELAY = 400; // ms
+
+// --- Custom Debounce Hook ---
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => { setDebouncedValue(value); }, delay);
+    return () => { clearTimeout(handler); };
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 // --- Shuffle Function (Keep) ---
-function shuffleArray(array) {
-  let currentIndex = array.length, randomIndex;
-  while (currentIndex !== 0) {
-    randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex--;
-    [array[currentIndex], array[randomIndex]] = [
-      array[randomIndex], array[currentIndex]];
-  }
-  return array;
-}
+function shuffleArray(array) { /* ... */ }
+
 
 function App() {
   // --- State variables ---
-  const [portraits, setPortraits] = useState([]); // Master list from API
+  const [portraits, setPortraits] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [totalPortraits, setTotalPortraits] = useState(0);
+  const [totalPortraits, setTotalPortraits] = useState(0); // Total based on current view
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isHoveringMadeBy, setIsHoveringMadeBy] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(''); // State for search input (kept but input hidden)
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isMadeByBoxOpen, setIsMadeByBoxOpen] = useState(false); // For click toggle
+  const [searchQuery, setSearchQuery] = useState(''); // Raw search input
 
-  // --- Fetch logic (Kept as is - Client-side search doesn't affect fetch) ---
-  const fetchPortraits = useCallback(async (currentPage) => {
+  // --- Debounced search query ---
+  const debouncedSearchQuery = useDebounce(searchQuery, DEBOUNCE_DELAY);
+
+  // --- Fetch Logic (Handles both search and normal listing) ---
+  const fetchPortraits = useCallback(async (currentPage, currentSearch = '') => {
     if (isLoading && currentPage > 1) return;
-    setIsLoading(true); setError(null);
+
+    setIsLoading(true);
+    if (currentPage === 1) {
+      setIsInitialLoading(true);
+      setPortraits([]); // Clear results when starting new fetch (page 1)
+    } else {
+      setIsInitialLoading(false);
+    }
+    setError(null);
+
+    const searchTerm = currentSearch.trim();
+    let url;
+
+    // Determine API endpoint based on search term
+    if (searchTerm.length >= SEARCH_THRESHOLD) {
+      url = `${SEARCH_API_ENDPOINT}?q=${encodeURIComponent(searchTerm)}&page=${currentPage}&limit=${ITEMS_PER_PAGE}`;
+      console.log(`Workspaceing SEARCH results: ${url}`);
+    } else {
+      url = `${PORTRAITS_API_ENDPOINT}?page=${currentPage}&limit=${ITEMS_PER_PAGE}`;
+      console.log(`Workspaceing unfiltered results: ${url}`);
+    }
+
     try {
-        const response = await fetch(`${API_URL}?page=${currentPage}&limit=${ITEMS_PER_PAGE}`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        setPortraits(prev => [...prev, ...data.portraits]);
-        if (currentPage === 1 || totalPortraits === 0) setTotalPortraits(data.total);
-        setHasMore((portraits.length + data.portraits.length) < data.total);
+      const response = await fetch(url);
+      if (!response.ok) {
+         let errorMsg = `HTTP error! status: ${response.status}`;
+         try { // Try to get more specific error from backend response body
+            const errData = await response.json();
+            errorMsg = errData.error || errorMsg;
+         } catch (_) { /* Ignore parsing error */ }
+         throw new Error(errorMsg);
+      }
+      const data = await response.json();
+
+      setPortraits(prev => currentPage === 1 ? data.portraits : [...prev, ...data.portraits]);
+      setTotalPortraits(data.total); // Total is now specific to search or full list
+      setHasMore((currentPage === 1 ? data.portraits.length : portraits.length + data.portraits.length) < data.total);
+
     } catch (e) {
-        console.error("Failed to fetch portraits:", e); setError(`Failed to load portraits: ${e.message}. Please try refreshing.`); setHasMore(false);
-    } finally { setIsLoading(false); }
-  }, [isLoading, totalPortraits, portraits.length]);
+      console.error("Failed to fetch portraits:", e);
+      setError(`Failed to load portraits: ${e.message}. Please try refreshing.`);
+      setHasMore(false);
+      setPortraits([]); // Clear results on error
+      setTotalPortraits(0);
+    } finally {
+      setIsLoading(false);
+      setIsInitialLoading(false);
+    }
+  }, [isLoading, portraits.length]); // Depend on portraits.length for hasMore calculation
 
-  // --- Initial fetch (Kept as is) ---
+
+  // --- Effect to Fetch Data When Debounced Search Changes ---
   useEffect(() => {
-    const fetchAndShuffleFirstPage = async () => {
-       setPortraits([]); setPage(1); setHasMore(true); setError(null); setTotalPortraits(0); setIsLoading(true);
-       try {
-         const response = await fetch(`${API_URL}?page=1&limit=${ITEMS_PER_PAGE}`);
-         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-         const data = await response.json();
-         const shuffledPortraits = shuffleArray([...data.portraits]);
-         setPortraits(shuffledPortraits);
-         setTotalPortraits(data.total);
-         setHasMore(shuffledPortraits.length < data.total);
-       } catch (e) {
-         console.error("Failed to fetch initial portraits:", e); setError(`Failed to load portraits: ${e.message}. Please try refreshing.`); setHasMore(false);
-       } finally { setIsLoading(false); }
-    };
-    fetchAndShuffleFirstPage();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const query = debouncedSearchQuery.trim();
+    // Trigger fetch if query is long enough OR if it's cleared (empty string)
+    if (query.length >= SEARCH_THRESHOLD || query.length === 0) {
+      setPage(1); // Reset to page 1
+      fetchPortraits(1, query); // Fetch based on new query
+    } else {
+      // Query is 1 or 2 chars - don't fetch, clear results and show message?
+      // setPortraits([]); // Optional: Clear results immediately
+      // setTotalPortraits(0);
+      // setHasMore(false);
+    }
+  }, [debouncedSearchQuery, fetchPortraits]);
 
-  // --- Load more logic (Kept as is - Includes check for active search) ---
+
+  // --- Load More Logic ---
   const loadMore = () => {
-    // This correctly prevents loading more via scroll when search is active client-side
-    if (!isLoading && hasMore && searchQuery.length < SEARCH_THRESHOLD) {
-      const nextPage = page + 1; setPage(nextPage); fetchPortraits(nextPage);
+    if (!isLoading && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      // Fetch next page using the current debounced query
+      fetchPortraits(nextPage, debouncedSearchQuery.trim());
     }
   };
 
-  // --- Memoized Filtering Logic (Kept as is - Client-side search) ---
-  const filteredPortraits = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (query.length < SEARCH_THRESHOLD) {
-      return portraits;
-    }
-    return portraits.filter(p =>
-      p.username.toLowerCase().includes(query)
-    );
-  }, [searchQuery, portraits]);
+  // --- REMOVED Memoized Filtering Logic ---
+  // const filteredPortraits = useMemo(() => { ... });
 
-
-  // --- Skeleton component helper (Kept as is) ---
+  // --- Skeleton component helper (Keep) ---
   const Skeletons = () => {
-      const showSkeletons = isLoading && filteredPortraits.length === 0;
-      const skeletonCount = showSkeletons ? (page === 1 ? ITEMS_PER_PAGE : 12) : 0;
-      if (!showSkeletons) return null;
-      return Array.from({ length: skeletonCount }).map((_, index) => (
-          <SkeletonCard key={`skeleton-${index}`} />
-      ));
+    if (!isLoading || portraits.length > 0) return null;
+    const count = isInitialLoading ? ITEMS_PER_PAGE : 12;
+    return Array.from({ length: count }).map((_, index) => (
+        <SkeletonCard key={`skeleton-${index}`} />
+    ));
   };
 
 
   // --- JSX Return ---
   return (
-    <div className="max-w-screen-lg mx-auto px-4 pb-8 pt-20 text-gray-100"> {/* ADJUST PADDING TOP HERE */}
+    <div className="max-w-screen-lg mx-auto px-4 pb-8 pt-20 text-gray-100"> {/* ADJUST PADDING TOP */}
 
-      {/* --- Always Visible Sticky Header --- */}
+      {/* --- Header with UNCOMMENTED Search Input --- */}
       <header className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-screen-lg mx-auto px-4 z-20 bg-gray-900/80 backdrop-blur-md shadow-lg py-2">
         <div className="flex items-center justify-between w-full">
           {/* Logo and Title Group */}
@@ -115,22 +152,17 @@ function App() {
             </span>
           </div>
 
-          {/* --- Search Input - COMMENTED OUT --- */}
-          {/*
+          {/* --- Search Input - UNCOMMENTED and Functional --- */}
           <div className="flex-grow mx-4 max-w-xs">
              <input
                type="search"
-               placeholder="Search by username (3+ chars)..."
+               placeholder="Search portraits (3+ chars)..." // Updated placeholder
                className="w-full px-3 py-1.5 rounded-md bg-gray-700/50 border border-gray-600/70 text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-               value={searchQuery} // Still connected to allow future re-enabling
-               onChange={(e) => setSearchQuery(e.target.value)}
+               value={searchQuery} // Controlled input
+               onChange={(e) => setSearchQuery(e.target.value)} // Update raw query state -> triggers debounce -> triggers useEffect
              />
            </div>
-          */}
-          {/* --- End Search Input Comment --- */}
-
-          {/* --- Placeholder for Search Input to maintain layout --- */}
-          <div className="flex-grow mx-4 max-w-xs" aria-hidden="true"></div>
+          {/* --- End Search Input --- */}
 
         </div>
       </header>
@@ -138,33 +170,39 @@ function App() {
 
       {/* Description Paragraph */}
       <p className="text-center text-base text-gray-400 max-w-2xl mx-auto mt-6 mb-8">
-        Scroll to find live "portraits", decentralized micro-websites where people share who they are, what they do, what they are working on and many other things!
+        Scroll to find live "portraits", decentralized micro-websites... {/* Truncated */}
       </p>
 
       {/* Error message */}
       {error && !isLoading && ( <div className="text-center text-red-400 bg-red-900/30 p-4 rounded-md border border-red-600 mb-4"><p><strong>Error:</strong> {error}</p></div> )}
 
-      {/* Infinite Scroll Container - Uses filteredPortraits */}
-      {!error && (
+      {/* Infinite Scroll Container - Renders portraits state */}
+      {(!error || isLoading) && (
         <InfiniteScroll
-          dataLength={filteredPortraits.length}
+          dataLength={portraits.length} // Length of current results
           next={loadMore}
-          hasMore={searchQuery.length < SEARCH_THRESHOLD && hasMore && !error} // Correctly handles client-side search status
+          hasMore={hasMore && !error} // Use hasMore from API
           loader={
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 mt-6">
                <Skeletons />
             </div>
           }
           endMessage={
-            searchQuery.length < SEARCH_THRESHOLD && !isLoading && !error && portraits.length > 0 && portraits.length >= totalPortraits ? (
-              <p className="text-center text-gray-400 mt-8 py-4"><b>Yay! You have seen it all</b></p>
+            !isLoading && !hasMore && portraits.length > 0 ? (
+              <p className="text-center text-gray-400 mt-8 py-4">
+                {debouncedSearchQuery.length >= SEARCH_THRESHOLD
+                  ? <b>End of search results.</b>
+                  : <b>Yay! You have seen it all.</b>
+                }
+              </p>
             ) : null
           }
           style={{ overflow: 'visible' }}
         >
-          {/* Portrait Grid - Uses filteredPortraits */}
+          {/* Portrait Grid - Renders portraits state */}
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
-            {filteredPortraits.map((portrait) => (
+            {/* Render directly from portraits state */}
+            {portraits.map((portrait) => (
               <PortraitCard key={portrait.id} portrait={portrait} />
             ))}
           </div>
@@ -172,87 +210,62 @@ function App() {
       )}
       {/* End Infinite Scroll */}
 
-       {/* No Search Results Message (Client-side) */}
-       {searchQuery.length >= SEARCH_THRESHOLD && filteredPortraits.length === 0 && !isLoading && !error && (
-         <p className="text-center text-gray-400 mt-8 py-4">No portraits found matching "{searchQuery}".</p>
+       {/* No Results Message (Server-side) */}
+       {!isLoading && !error && debouncedSearchQuery.length >= SEARCH_THRESHOLD && portraits.length === 0 && !isInitialLoading && ( // Check !isInitialLoading to avoid showing during initial search fetch
+         <p className="text-center text-gray-400 mt-8 py-4">
+            No portraits found matching "{debouncedSearchQuery}".
+         </p>
        )}
 
-      {/* Counter Display - Updated text */}
+       {/* Message while search query is below threshold (optional) */}
+       {searchQuery.length > 0 && searchQuery.length < SEARCH_THRESHOLD && (
+         <p className="text-center text-gray-400 mt-8 py-4">
+            Please enter at least {SEARCH_THRESHOLD} characters to search.
+         </p>
+       )}
+
+      {/* Counter Display - Uses totalPortraits from API */}
        {totalPortraits > 0 && !isLoading && (
            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-10 p-2 px-3 rounded-lg bg-gray-900/30 backdrop-blur-md border border-gray-700/50 text-gray-100 text-xs shadow-lg">
-              {portraits.length} / {totalPortraits} Portraits {filteredPortraits.length !== portraits.length ? `(${filteredPortraits.length} shown)` : ''}
+              {portraits.length} / {totalPortraits} {debouncedSearchQuery.length >= SEARCH_THRESHOLD ? 'Matching' : ''} Portraits
            </div>
        )}
 
-      {/* --- "Made by" Box (MODIFIED Expanded View) --- */}
+      {/* "Made by" Box (Click Toggle + Social Links Hover) */}
       <div
-          className="fixed bottom-4 right-4 z-10 rounded-lg bg-gray-800/40 backdrop-blur-md border border-gray-700/40 shadow-md transition-all duration-300 ease-in-out overflow-hidden"
-          onMouseEnter={() => setIsHoveringMadeBy(true)}
-          onMouseLeave={() => setIsHoveringMadeBy(false)}
+          onClick={() => setIsMadeByBoxOpen(prev => !prev)} // Click toggle
+          className="fixed bottom-4 right-4 z-10 rounded-lg bg-gray-800/40 backdrop-blur-md border border-gray-700/40 shadow-md transition-all duration-300 ease-in-out overflow-hidden cursor-pointer"
       >
-         {/* Compact View (remains the same) */}
-         {!isHoveringMadeBy ? (
+         {!isMadeByBoxOpen ? (
+              // Compact View
               <div className="flex items-center space-x-2 p-2">
                   <img src="https://irys.portrait.host/FEQnDav4onGWwukVL1-p1ytDMaZu6Cai0AxvUPMRemw" alt="remivalade profile picture" className="w-6 h-6 rounded-full border border-gray-600/50"/>
-                  <a href="https://portrait.so/remivalade" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-200 hover:text-white font-medium" title="View remivalade's Portrait profile">made by remivalade</a>
+                  <span className="text-xs text-gray-200 font-medium" title="Show info">made by remivalade</span>
               </div>
           ) : (
-             // --- Expanded View ---
+             // Expanded View
              <div className="p-4 w-48 flex flex-col items-center text-center">
                  <img src="https://irys.portrait.host/FEQnDav4onGWwukVL1-p1ytDMaZu6Cai0AxvUPMRemw" alt="remivalade profile picture" className="w-16 h-16 rounded-full border-2 border-gray-600/70 mb-3 shadow-md"/>
                  <p className="text-sm font-medium text-gray-100 mb-1">Hi, I'm Rémi.</p>
                  <p className="text-xs text-gray-300 mb-3">I hope you like what you see there.</p>
-
-                 {/* --- Social Links Container with Hover Effects --- */}
+                 {/* Social Links */}
                  <div className="flex items-center justify-center space-x-4 mb-4">
-                     {/* LinkedIn Link */}
-                     <a href="https://www.linkedin.com/in/remivalade/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Rémi Valade on LinkedIn"
-                        className="p-1 rounded-md border border-transparent hover:border-purple-400/50 transition-all duration-200 ease-in-out hover:scale-110 block" // Added padding, border, transition, scale
-                     >
-                         <img src="/linkedin.svg" alt="LinkedIn" className="w-5 h-5 block" /> {/* Added block */}
+                     <a href="https://www.linkedin.com/in/remivalade/" onClick={e => e.stopPropagation()} target="_blank" rel="noopener noreferrer" title="Rémi Valade on LinkedIn" className="p-1 rounded-md border border-transparent hover:border-purple-400/50 transition-all duration-200 ease-in-out hover:scale-110 block">
+                         <img src="/linkedin.svg" alt="LinkedIn" className="w-5 h-5 block" />
                      </a>
-                     {/* X (Twitter) Link */}
-                     <a href="https://x.com/remivalade"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Rémi Valade on X"
-                        className="p-1 rounded-md border border-transparent hover:border-purple-400/50 transition-all duration-200 ease-in-out hover:scale-110 block" // Added padding, border, transition, scale
-                      >
-                          <img src="/x.svg" alt="X" className="w-5 h-5 block" /> {/* Added block */}
+                     <a href="https://x.com/remivalade" onClick={e => e.stopPropagation()} target="_blank" rel="noopener noreferrer" title="Rémi Valade on X" className="p-1 rounded-md border border-transparent hover:border-purple-400/50 transition-all duration-200 ease-in-out hover:scale-110 block">
+                          <img src="/x.svg" alt="X" className="w-5 h-5 block" />
                      </a>
                  </div>
-                 {/* --- End Social Links Container --- */}
-
-                 {/* === CORRECTED Bling bling Button === */}
-               <a href="https://portrait.so/remivalade"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="relative /* Needs position context for absolute span */
-                             inline-flex items-center justify-center space-x-2 mt-3 px-3 py-1.5 border border-gray-600
-                             text-gray-100 hover:text-white
-                             rounded-md shadow-sm text-xs font-medium w-full
-                             overflow-hidden group /* Crucial: overflow-hidden and group */
-                             bg-gradient-to-r from-purple-500 via-orange-500 to-yellow-500 /* Keep gradient bg */
-                             transition-all duration-300 /* Base transition */
-                             hover:shadow-lg hover:shadow-purple-500/20 /* Keep optional glow */
-                            "
-               >
-                  {/* NEW: Shine Span */}
-                  <span className="absolute top-0 right-0 w-10 h-full -mt-1 /* Positioning & Size */
-                                 transition-all duration-700 /* Animation speed */
-                                 transform translate-x-12 /* Initial position (off-right) */
-                                 bg-white opacity-20 /* Shine color & intensity */
-                                 rotate-12 /* Angle */
-                                 group-hover:-translate-x-56 /* Move across on hover */
-                                 ease-out /* Animation timing */
-                                "></span>
-                   {/* Text span needs to be relative to stay on top */}
-                  <span className="relative z-10 transition-colors duration-300">Check my Portrait</span>
-               </a>
-                 {/* === End Button Correction === */}
+                 {/* Animated Button */}
+                 <a href="https://portrait.so/remivalade"
+                    onClick={e => e.stopPropagation()}
+                    target="_blank" rel="noopener noreferrer"
+                    className="relative inline-flex items-center justify-center space-x-2 mt-3 px-3 py-1.5 border border-gray-600 text-gray-100 hover:text-white rounded-md shadow-sm text-xs font-medium w-full overflow-hidden group bg-gradient-to-r from-purple-500 via-orange-500 to-yellow-500 bg-[length:300%_100%] bg-no-repeat hover:animate-gradient-sweep transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20"
+                 >
+                    <span className="absolute top-0 right-0 w-10 h-full -mt-1 transition-all duration-700 transform translate-x-12 bg-white opacity-20 rotate-12 group-hover:-translate-x-56 ease-out"></span>
+                    <span className="relative z-10 transition-colors duration-300">Check my Portrait</span>
+                 </a>
              </div>
           )}
       </div>
