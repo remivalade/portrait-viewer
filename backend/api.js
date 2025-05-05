@@ -61,7 +61,27 @@ function dbAll(sql, params = []) {
 // --- Express App Setup ---
 const app = express();
 app.use(cors()); // Enable CORS for all origins
-
+// ---------- helpers -------------------------------------------------------
+function toAvatarImage(row) {
+  // 1️⃣ prefer image_url (IPFS)
+  if (row.image_url) {
+    // convert ipfs://CID to an HTTPS gateway URL
+    if (row.image_url.startsWith('ipfs://')) {
+      const cid = row.image_url.slice(7);
+      return `https://w3s.link/ipfs/${cid}`;   // use any gateway you like
+    }
+    return row.image_url; // already http(s)
+  }
+  // 2️⃣ fallback: Arweave tx
+  if (row.image_arweave_tx) {
+    // store either the full URL or just the tx-id; handle both
+    return row.image_arweave_tx.startsWith('http')
+      ? row.image_arweave_tx
+      : `https://arweave.net/${row.image_arweave_tx}`;
+  }
+  // 3️⃣ nothing available
+  return null;
+}
 // --- API Endpoints ---
 
 // Endpoint to get paginated portraits
@@ -80,7 +100,7 @@ app.get('/api/portraits', async (req, res) => {
     const [totalResult, portraitsResult] = await Promise.all([
       dbGet(`SELECT COUNT(*) as total FROM portraits`),
       dbAll(
-        `SELECT id, username, image_url, profile_url, image_arweave_tx
+        `SELECT id, username, image_url, image_arweave_tx, profile_url, is_published
          FROM portraits
          ORDER BY id ASC
          LIMIT ? OFFSET ?`,
@@ -90,12 +110,16 @@ app.get('/api/portraits', async (req, res) => {
 
     const total = totalResult?.total || 0;
 
-    res.json({
-      page,
-      limit,
-      total,
-      portraits: portraitsResult || [] // Ensure portraits is always an array
-    });
+
+    const portraits = (portraitsResult || []).map(r => ({
+      id:            r.id,
+      username:      r.username,
+      avatar_image:  toAvatarImage(r),
+      profile_url:   r.profile_url,
+      is_live:       !!r.is_published,
+    }));
+
+    res.json({ page, limit, total, portraits });
 
   } catch (error) {
     // Log the error on the server
@@ -201,7 +225,7 @@ app.get('/api/portraits/search', async (req, res) => {
       ),
       // Récupère les données paginées correspondantes
       dbAll(
-        `SELECT p.id, p.username, p.image_url, p.profile_url, p.image_arweave_tx
+        `SELECT p.id, p.username, p.image_url, p.image_arweave_tx, p.profile_url, p.is_published
          FROM portraits p JOIN portraits_fts fts ON p.id = fts.rowid
          WHERE portraits_fts MATCH ?
          ORDER BY p.id ASC -- Ou un autre tri si pertinent (ex: rank FTS)
@@ -218,6 +242,15 @@ app.get('/api/portraits/search', async (req, res) => {
       total,
       portraits: portraitsResult || [] // Assure que c'est toujours un tableau
     });
+    const portraits = (portraitsResult || []).map(r => ({
+      id:            r.id,
+      username:      r.username,
+      avatar_image:  toAvatarImage(r),
+      profile_url:   r.profile_url,
+      is_live:       !!r.is_published,
+    }));
+
+    res.json({ page, limit, total, portraits });
 
   } catch (error) {
     console.error(`❌ Error searching portraits (query: ${searchTerm}, page: ${page}, limit: ${limit}):`, error.message);

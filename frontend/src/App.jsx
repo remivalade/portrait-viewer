@@ -163,7 +163,7 @@ export default function App() {
           )
         }
       >
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4 p-4">
           {portraits.map(p => (
             <PortraitCard key={p.id} portrait={p} />
           ))}
