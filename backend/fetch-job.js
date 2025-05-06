@@ -99,26 +99,38 @@ async function prepareDb(){
     console.warn(`⚠️  DB corrupt → moved to ${bad}`);
     return prepareDb();
   }
+  // main table (new flags added)
   await dbRun(db,`CREATE TABLE IF NOT EXISTS portraits (
-    id              INTEGER PRIMARY KEY,
-    username        TEXT,
-    owner_address   TEXT,
-    state_hash      TEXT,
-    is_published    INTEGER DEFAULT 0,
-    image_url       TEXT,
-    profile_url     TEXT,
-    image_arweave_tx TEXT,
-    last_checked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    id                INTEGER PRIMARY KEY,
+    username          TEXT,
+    owner_address     TEXT,
+    state_hash        TEXT,
+    is_published      INTEGER DEFAULT 0,
+    image_url         TEXT,
+    profile_url       TEXT,
+    image_arweave_tx  TEXT,
+    has_ipfs          INTEGER DEFAULT 0,
+    has_arweave       INTEGER DEFAULT 0,
+    last_checked_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(id)
   );`);
+
+  /* --- light-touch migration if the DB was created before these flags --- */
+  await dbRun(db,`ALTER TABLE portraits ADD COLUMN has_ipfs     INTEGER DEFAULT 0;`).catch(()=>{});
+  await dbRun(db,`ALTER TABLE portraits ADD COLUMN has_arweave  INTEGER DEFAULT 0;`).catch(()=>{});
+  
   await dbRun(db,'CREATE INDEX IF NOT EXISTS idx_username ON portraits(username);');
   await dbRun(db,'CREATE INDEX IF NOT EXISTS idx_owner ON portraits(owner_address);');
   await dbRun(db,'CREATE INDEX IF NOT EXISTS idx_published ON portraits(is_published);');
-
+  await dbRun(db,'CREATE INDEX IF NOT EXISTS idx_avatar ON portraits(has_ipfs,has_arweave);');
   await dbRun(db,`CREATE VIRTUAL TABLE IF NOT EXISTS portraits_fts USING fts5(
-      username, content='portraits', content_rowid='id', tokenize='unicode61 remove_diacritics 2'
-  );`);
+      username,
+      content='portraits',
+      content_rowid='id',
+      tokenize='unicode61 remove_diacritics 2'
+  );`
+);
 
   await dbRun(db,`CREATE TABLE IF NOT EXISTS job_status (
     job_name TEXT PRIMARY KEY,
@@ -254,13 +266,26 @@ async function runJob(){
           if(apiTitle && apiTitle.trim()) title=apiTitle.replace(/<[^>]*>/g,'').trim();
         }catch{ /* ignore api error */ }
       }
-      const imgUrl=cid?`${IPFS_GATEWAY}${cid}`:null;
-      const arUrl=arTx?`${IRYS_GATEWAY}${arTx}`:null;
+      const imgUrl = cid ? `${IPFS_GATEWAY}${cid}` : null;
+      const arUrl  = arTx ? `${IRYS_GATEWAY}${arTx}` : null;
+      const hasIpfs    = imgUrl ? 1 : 0;
+      const hasArweave = arUrl  ? 1 : 0;
       const profileUrl=username?`${PUBLIC_PAGE}${encodeURIComponent(username)}`:null;
 
       console.log(`   ↳ (${count}/${candidateIds.length}) id:${id} usr:${username||'·'} pub:${isPublished?'✔':'·'}`);
 
-      portraitsToSave.push({id,username:title||null,owner_address:owner,state_hash:stateHash,is_published:isPublished,image_url:imgUrl,profile_url:profileUrl,image_arweave_tx:arUrl});
+      portraitsToSave.push({
+        id,
+        username:          title || null,
+        owner_address:     owner,
+        state_hash:        stateHash,
+        is_published:      isPublished,
+        image_url:         imgUrl,
+        profile_url:       profileUrl,
+        image_arweave_tx:  arUrl,
+        has_ipfs:          hasIpfs,
+        has_arweave:       hasArweave
+      });
       await sleep(GAP_MS);
     }
 
@@ -270,9 +295,15 @@ async function runJob(){
         db.serialize(()=>{
           db.run('BEGIN;');
           const stmt=db.prepare(`INSERT OR REPLACE INTO portraits
-              (id,username,owner_address,state_hash,is_published,image_url,profile_url,image_arweave_tx,last_checked_at)
-              VALUES (?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP);`);
-          portraitsToSave.forEach(r=>stmt.run([r.id,r.username,r.owner_address,r.state_hash,r.is_published,r.image_url,r.profile_url,r.image_arweave_tx]));
+              (id, username, owner_address, state_hash, is_published,
+               image_url, profile_url, image_arweave_tx,
+               has_ipfs, has_arweave, last_checked_at)
+              VALUES (?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP);`);
+          portraitsToSave.forEach(r=>stmt.run([
+            r.id,r.username,r.owner_address,r.state_hash,r.is_published,
+            r.image_url,r.profile_url,r.image_arweave_tx,
+            r.has_ipfs,r.has_arweave
+          ]));
           stmt.finalize();
           db.run(`INSERT INTO portraits_fts(portraits_fts) VALUES('rebuild');`);
           db.run('COMMIT;', err => {

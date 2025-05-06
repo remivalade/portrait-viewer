@@ -82,36 +82,70 @@ function toAvatarImage(row) {
   // 3️⃣ nothing available
   return null;
 }
+// ---------- filters -------------------------------------------------------
+
+function buildFilter(sqlParts) {
+  // sqlParts is an array we push "field = ?" strings into
+  // and return { where, params } ready for sqlite
+  const tokens = ( (sqlParts.filter || '').toString() )
+                .split(',').map(t => t.trim()).filter(Boolean);
+
+  const where = [];
+  const params = [];
+
+  if (!tokens.length || tokens.includes('live'))       // default
+    where.push('is_published = 1');
+
+  if (tokens.includes('avatar'))
+    where.push('(image_url IS NOT NULL OR image_arweave_tx IS NOT NULL)');
+
+  if (tokens.includes('all'))  where.length = 0;       // override
+
+  return {
+    whereClause: where.length ? 'WHERE ' + where.join(' AND ') : '',
+    params      // none yet; kept for future use
+  };
+}
+
 // --- API Endpoints ---
 
 // Endpoint to get paginated portraits
 app.get('/api/portraits', async (req, res) => {
-  const page = Number(req.query.page || 1);
-  const limit = Number(req.query.limit || 50);
+  const page   = Number(req.query.page   || 1);
+  const limit  = Number(req.query.limit  || 50);
+  const filter = (req.query.filter || '').toString();   // ← live / avatar / all
 
-  if (page < 1 || limit < 1 || limit > 100) { // Basic validation
+  if (page < 1 || limit < 1 || limit > 100) {
     return res.status(400).json({ error: 'Invalid page or limit parameter.' });
   }
-
   const offset = (page - 1) * limit;
 
+  /* -------- build WHERE clause from filter ----------------------------- */
+  const tokens = filter.split(',').map(t => t.trim()).filter(Boolean);
+  const where  = [];
+
+  if (!tokens.length || tokens.includes('live'))        where.push('is_published = 1');
+  if (tokens.includes('avatar'))                       where.push('(image_url IS NOT NULL OR image_arweave_tx IS NOT NULL)');
+  if (tokens.includes('all'))                          where.length = 0;   // override
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
   try {
-    // Use Promise.all to run count and data queries concurrently
-    const [totalResult, portraitsResult] = await Promise.all([
-      dbGet(`SELECT COUNT(*) as total FROM portraits`),
-      dbAll(
-        `SELECT id, username, image_url, image_arweave_tx, profile_url, is_published
-         FROM portraits
-         ORDER BY id ASC
-         LIMIT ? OFFSET ?`,
+    /* run total + page queries in parallel */
+    const [totalRow, rows] = await Promise.all([
+      dbGet(`SELECT COUNT(*) AS total FROM portraits ${whereSql}`),
+      dbAll(`
+        SELECT id, username, image_url, image_arweave_tx,
+               profile_url, is_published
+        FROM portraits
+        ${whereSql}
+        ORDER BY id ASC
+        LIMIT ? OFFSET ?`,
         [limit, offset]
       )
     ]);
 
-    const total = totalResult?.total || 0;
-
-
-    const portraits = (portraitsResult || []).map(r => ({
+    const portraits = rows.map(r => ({
       id:            r.id,
       username:      r.username,
       avatar_image:  toAvatarImage(r),
@@ -119,15 +153,14 @@ app.get('/api/portraits', async (req, res) => {
       is_live:       !!r.is_published,
     }));
 
-    res.json({ page, limit, total, portraits });
+    res.json({ page, limit, total: totalRow.total, portraits });
 
-  } catch (error) {
-    // Log the error on the server
-    console.error(`❌ Error fetching portraits (page: ${page}, limit: ${limit}):`, error.message);
-    // Send generic error to client
-    res.status(500).json({ error: 'Failed to retrieve portraits from database.' });
+  } catch (err) {
+    console.error(`❌ Error fetching portraits:`, err.message);
+    res.status(500).json({ error: 'Failed to retrieve portraits.' });
   }
 });
+
 
 // Endpoint to get application status
 app.get('/api/status', async (req, res) => {
@@ -196,53 +229,49 @@ app.get('/api/status', async (req, res) => {
   // 3. Search Portraits
 
 app.get('/api/portraits/search', async (req, res) => {
-  const query = req.query.q || ''; // Terme de recherche
-  const page = Number(req.query.page || 1);
-  const limit = Number(req.query.limit || 50); // Gardons la même limite par défaut
+  const q      = (req.query.q || '').toString().trim();
+  const page   = Number(req.query.page   || 1);
+  const limit  = Number(req.query.limit  || 50);
+  const filter = (req.query.filter || '').toString();
 
-  // Validation simple
-  if (typeof query !== 'string' || query.trim().length < 3) {
-    // Retourne un résultat vide si la recherche est trop courte ou invalide
-    // Ou vous pourriez retourner une erreur 400
-    return res.json({ page: 1, limit, total: 0, portraits: [] });
-  }
-  if (page < 1 || limit < 1 || limit > 100) {
+  if (q.length < 3) return res.json({ page: 1, limit, total: 0, portraits: [] });
+  if (page < 1 || limit < 1 || limit > 100)
     return res.status(400).json({ error: 'Invalid page or limit parameter.' });
-  }
 
   const offset = (page - 1) * limit;
-  const searchTerm = query.trim(); // Utiliser le terme nettoyé
+
+  /* -------- build WHERE from filter (same rules as above) -------------- */
+  const tokens = filter.split(',').map(t => t.trim()).filter(Boolean);
+  const where  = [];
+
+  if (!tokens.length || tokens.includes('live'))        where.push('p.is_published = 1');
+  if (tokens.includes('avatar'))                       where.push('(p.image_url IS NOT NULL OR p.image_arweave_tx IS NOT NULL)');
+  if (tokens.includes('all'))                          where.length = 0;
+
+  const whereSql = where.length ? `AND ${where.join(' AND ')}` : '';
 
   try {
-    // Utiliser Promise.all pour exécuter les requêtes de comptage et de données en parallèle
-    const [totalResult, portraitsResult] = await Promise.all([
-      // Compte le nombre total de résultats correspondants
-      dbGet(
-        `SELECT COUNT(*) as total
-         FROM portraits p JOIN portraits_fts fts ON p.id = fts.rowid
-         WHERE portraits_fts MATCH ?`,
-        [searchTerm] // Le terme pour MATCH
+    const [totalRow, rows] = await Promise.all([
+      dbGet(`
+        SELECT COUNT(*) AS total
+        FROM portraits p
+        JOIN portraits_fts fts ON p.id = fts.rowid
+        WHERE portraits_fts MATCH ? ${whereSql}`,
+        [q + '*']
       ),
-      // Récupère les données paginées correspondantes
-      dbAll(
-        `SELECT p.id, p.username, p.image_url, p.image_arweave_tx, p.profile_url, p.is_published
-         FROM portraits p JOIN portraits_fts fts ON p.id = fts.rowid
-         WHERE portraits_fts MATCH ?
-         ORDER BY p.id ASC -- Ou un autre tri si pertinent (ex: rank FTS)
-         LIMIT ? OFFSET ?`,
-        [searchTerm, limit, offset] // Paramètres pour MATCH, LIMIT, OFFSET
+      dbAll(`
+        SELECT p.id, p.username, p.image_url, p.image_arweave_tx,
+               p.profile_url, p.is_published
+        FROM portraits p
+        JOIN portraits_fts fts ON p.id = fts.rowid
+        WHERE portraits_fts MATCH ? ${whereSql}
+        ORDER BY fts.rank
+        LIMIT ? OFFSET ?`,
+        [q + '*', limit, offset]
       )
     ]);
 
-    const total = totalResult?.total || 0;
-
-    res.json({
-      page,
-      limit,
-      total,
-      portraits: portraitsResult || [] // Assure que c'est toujours un tableau
-    });
-    const portraits = (portraitsResult || []).map(r => ({
+    const portraits = rows.map(r => ({
       id:            r.id,
       username:      r.username,
       avatar_image:  toAvatarImage(r),
@@ -250,13 +279,14 @@ app.get('/api/portraits/search', async (req, res) => {
       is_live:       !!r.is_published,
     }));
 
-    res.json({ page, limit, total, portraits });
+    res.json({ page, limit, total: totalRow.total, portraits });
 
-  } catch (error) {
-    console.error(`❌ Error searching portraits (query: ${searchTerm}, page: ${page}, limit: ${limit}):`, error.message);
+  } catch (err) {
+    console.error(`❌ Error searching portraits:`, err.message);
     res.status(500).json({ error: 'Failed to search portraits.' });
   }
 });
+
 
 // --- Start Server ---
 app.listen(PORT, () => {
