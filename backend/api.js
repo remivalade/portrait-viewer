@@ -5,13 +5,15 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import sqlite3 from 'sqlite3';
 import fs from 'fs/promises'; // Use promises for async file stats
 
 // --- Configuration ---
 // Resolve path relative to the script's execution directory
 // Assumes script is run from project_root/backend
-const dbPath = path.resolve('./portraits.sqlite');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const dbPath    = path.resolve(__dirname, 'portraits.sqlite');
 const metaFilePath = path.resolve('./meta.json'); // Keep meta.json check for now? Or rely solely on DB status? Let's check both.
 const JOB_NAME = 'fetch-job'; // Key used in job_status table
 const PORT = process.env.PORT || 3001;
