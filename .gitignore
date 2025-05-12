@@ -1,7 +1,20 @@
-*.sqlite
-*.sqlite-shm
-*.sqlite-wal
+# Dépendances
+node_modules/
+frontend/node_modules/
 
+# Fichiers de base de données SQLite du backend
+backend/portraits.sqlite
+backend/portraits.sqlite-shm
+backend/portraits.sqlite-wal
+
+# Fichiers de log
 *.log
+npm-debug.log*
+yarn-error.log*
+
+# Fichiers générés par le système d'exploitation
 .DS_Store
 Thumbs.db
+
+# Répertoire de build du frontend
+frontend/dist/
