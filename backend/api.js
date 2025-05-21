@@ -141,7 +141,7 @@ app.get('/api/portraits', async (req, res) => {
                profile_url, is_published
         FROM portraits
         ${whereSql}
-        ORDER BY id ASC
+        ORDER BY RANDOM()
         LIMIT ? OFFSET ?`,
         [limit, offset]
       )
@@ -199,11 +199,13 @@ app.get('/api/status', async (req, res) => {
           jobStatus.lastRunStatus = jobRow.last_run_status;
           jobStatus.lastRunError = jobRow.last_run_error;
           jobStatus.highestIdProcessed = jobRow.highest_id_processed;
+          
+          // Calculate unpublished count directly from the database
           try {
-              const unpublishedIds = JSON.parse(jobRow.unpublished_ids_json || '[]');
-              jobStatus.unpublishedIdsCount = Array.isArray(unpublishedIds) ? unpublishedIds.length : null;
+              const unpublishedCount = await dbGet(`SELECT COUNT(*) as count FROM portraits WHERE is_published = 0`);
+              jobStatus.unpublishedIdsCount = unpublishedCount?.count ?? 0;
           } catch (e) {
-              console.warn("⚠️ Failed to parse unpublished_ids_json from DB status:", e.message);
+              console.warn("⚠️ Failed to get unpublished count from DB:", e.message);
               jobStatus.unpublishedIdsCount = null;
           }
       } else {

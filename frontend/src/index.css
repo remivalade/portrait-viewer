@@ -4,28 +4,85 @@
 
 @import "tailwindcss";
 
-/* Apply Dark Mode Styles Directly to Body */
+/* Base styles for both light and dark modes */
 body {
-  @apply font-sans; /* Keep base font */
+  @apply font-sans;
   min-height: 100vh;
   background-attachment: fixed;
+  transition: background-color 0.3s ease, background-image 0.3s ease;
+}
 
-  /* Dark base color */
-  background-color: #111827; /* Tailwind gray-900 */
-  /* Dark gradient */
-  background-image:
+/* Light mode styles */
+body {
+  background-color: #fff5f7;
+  background-image: 
+    radial-gradient(circle 500px at 0% 0%, rgba(251, 182, 206, 0.4), transparent 80%),
+    radial-gradient(circle 600px at 100% 100%, rgba(254, 215, 170, 0.4), transparent 80%),
+    radial-gradient(circle 400px at 50% 50%, rgba(253, 230, 138, 0.3), transparent 80%);
+  color: #1f2937; /* text-gray-800 for better readability */
+}
+
+/* Light mode specific styles */
+:root:not(.dark) {
+  /* Header background */
+  .header-light {
+    @apply bg-white/85 backdrop-blur-md;
+  }
+
+  /* Card backgrounds */
+  .card-light {
+    @apply bg-white/85 backdrop-blur-sm;
+  }
+
+  /* Portrait card hover effect */
+  .portrait-card-light {
+    @apply transition-all duration-300 ease-in-out;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  .portrait-card-light:hover {
+    @apply transform -translate-y-1;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Text colors for better readability */
+  .text-primary-light {
+    @apply text-gray-800;
+  }
+
+  .text-secondary-light {
+    @apply text-gray-600;
+  }
+
+  /* Input and button backgrounds */
+  .input-light {
+    @apply bg-white/70 backdrop-blur-sm;
+  }
+
+  .button-light {
+    @apply bg-white/85 backdrop-blur-sm;
+  }
+}
+
+/* Dark mode styles */
+.dark body {
+  background-color: #111827;
+  background-image: 
     radial-gradient(circle 500px at 0% 100%, rgba(30, 58, 138, 0.3), transparent 80%),
     radial-gradient(circle 600px at 100% 0%, rgba(76, 29, 149, 0.3), transparent 80%);
 }
 
-/* Noise Overlay (remains the same) */
+/* Noise Overlay */
 body::before {
   content: "";
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-image: url('/nnnoise.svg'); /* Ensure SVG is in public folder */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('/nnnoise.svg');
   background-repeat: repeat;
-  opacity: 0.03; /* Adjust as desired */
+  opacity: 0.03;
   z-index: -1;
   pointer-events: none;
 }
