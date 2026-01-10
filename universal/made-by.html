@@ -1,0 +1,250 @@
+<!--
+  Universal "Made By" Component
+  Copy and paste this into your HTML (e.g., in your footer).
+-->
+
+<!-- Styles -->
+<style>
+  .made-by-component {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 9999;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease-in-out;
+    overflow: hidden;
+    cursor: pointer;
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .made-by-component.dark {
+    background-color: rgba(17, 24, 39, 0.8);
+    color: #f3f4f6;
+  }
+
+  .made-by-component:hover {
+    box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.5);
+  }
+
+  /* Closed State */
+  .made-by-header {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .made-by-avatar-sm {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(75, 85, 99, 0.5);
+  }
+
+  .made-by-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #1f2937;
+    white-space: nowrap;
+  }
+
+  .made-by-component.dark .made-by-label {
+    color: #e5e7eb;
+  }
+
+  .made-by-chevron {
+    width: 1rem;
+    height: 1rem;
+    color: #6b7280;
+    transition: transform 0.2s;
+  }
+
+  .made-by-component.dark .made-by-chevron {
+    color: #9ca3af;
+  }
+
+  /* Open State (Hidden by default) */
+  .made-by-content {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1rem;
+    width: 12rem;
+  }
+
+  .made-by-component.open .made-by-header {
+    display: none;
+  }
+
+  .made-by-component.open .made-by-content {
+    display: flex;
+  }
+
+  .made-by-top-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+
+  .made-by-avatar-lg {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 9999px;
+    border: 2px solid rgba(75, 85, 99, 0.7);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .made-by-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: #1f2937;
+  }
+
+  .made-by-component.dark .made-by-title {
+    color: #f3f4f6;
+  }
+
+  .made-by-subtitle {
+    font-size: 0.75rem;
+    margin-bottom: 0.75rem;
+    color: #4b5563;
+  }
+
+  .made-by-component.dark .made-by-subtitle {
+    color: #d1d5db;
+  }
+
+  .made-by-socials {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .made-by-social-icon {
+    display: block;
+    padding: 0.25rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+    color: #9ca3af;
+  }
+
+  .made-by-social-icon:hover {
+    transform: scale(1.1);
+    border-color: rgba(168, 85, 247, 0.5);
+  }
+
+  .made-by-social-icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: currentColor;
+  }
+
+  .made-by-social-icon.linkedin:hover { color: #0077b5; }
+  .made-by-social-icon.x:hover { color: #000000; }
+  .made-by-component.dark .made-by-social-icon.x:hover { color: #ffffff; }
+
+  .made-by-cta {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    border: 1px solid #4b5563;
+    color: #f3f4f6;
+    font-size: 0.75rem;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    text-decoration: none;
+    background: linear-gradient(to right, #a855f7, #f97316, #eab308);
+    transition: all 0.3s;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  .made-by-cta:hover {
+    color: #ffffff;
+    box-shadow: 0 10px 15px -3px rgba(168, 85, 247, 0.2);
+  }
+
+  .made-by-cta span {
+    position: relative;
+    z-index: 10;
+  }
+</style>
+
+<!-- Component HTML -->
+<div id="made-by-component" class="made-by-component">
+
+  <!-- Closed State -->
+  <div class="made-by-header">
+    <img src="https://irys.portrait.host/FEQnDav4onGWwukVL1-p1ytDMaZu6Cai0AxvUPMRemw" alt="Profile" class="made-by-avatar-sm">
+    <span class="made-by-label">made by remivalade</span>
+    <svg xmlns="http://www.w3.org/2000/svg" class="made-by-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+    </svg>
+  </div>
+
+  <!-- Open State -->
+  <div class="made-by-content">
+    <div class="made-by-top-row">
+      <img src="https://irys.portrait.host/FEQnDav4onGWwukVL1-p1ytDMaZu6Cai0AxvUPMRemw" alt="Profile" class="made-by-avatar-lg">
+      <svg xmlns="http://www.w3.org/2000/svg" class="made-by-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="transform: rotate(180deg);">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+      </svg>
+    </div>
+
+    <p class="made-by-title">Hi, I'm Rémi.</p>
+    <p class="made-by-subtitle">I hope you like what you see there.</p>
+
+    <div class="made-by-socials">
+      <a href="https://www.linkedin.com/in/remivalade/" target="_blank" rel="noopener noreferrer" class="made-by-social-icon linkedin" title="LinkedIn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+        </svg>
+      </a>
+      <a href="https://x.com/remivalade" target="_blank" rel="noopener noreferrer" class="made-by-social-icon x" title="X">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+      </a>
+    </div>
+
+    <a href="https://portrait.so/remivalade" target="_blank" rel="noopener noreferrer" class="made-by-cta">
+      <span>Check my Portrait</span>
+    </a>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script>
+  (function() {
+    const component = document.getElementById('made-by-component');
+
+    // Toggle Open/Close
+    component.addEventListener('click', function(e) {
+      // Prevent closing if clicking on a link
+      if (e.target.closest('a')) {
+        e.stopPropagation();
+        return;
+      }
+      this.classList.toggle('open');
+    });
+
+    // Optional: Dark Mode Detection (Auto)
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      component.classList.add('dark');
+    }
+
+    // Optional: Manual Dark Mode override
+    // component.classList.add('dark');
+  })();
+</script>
