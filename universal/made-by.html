@@ -175,6 +175,24 @@
     box-shadow: 0 10px 15px -3px rgba(168, 85, 247, 0.2);
   }
 
+  /* Shine Animation Elements */
+  .made-by-shine {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 2.5rem;
+    height: 100%;
+    margin-top: -0.25rem;
+    background-color: white;
+    opacity: 0.2;
+    transform: rotate(12deg) translateX(3rem);
+    transition: transform 0.7s ease-out;
+  }
+
+  .made-by-cta:hover .made-by-shine {
+    transform: rotate(12deg) translateX(-14rem); /* Adjust distance based on button width */
+  }
+
   .made-by-cta span {
     position: relative;
     z-index: 10;
@@ -219,6 +237,7 @@
     </div>
 
     <a href="https://portrait.so/remivalade" target="_blank" rel="noopener noreferrer" class="made-by-cta">
+      <span class="made-by-shine"></span>
       <span>Check my Portrait</span>
     </a>
   </div>
