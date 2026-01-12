@@ -177,6 +177,7 @@
 
   /* Shine Animation Elements */
   .made-by-shine {
+    display: block;
     position: absolute;
     top: 0;
     right: 0;
@@ -184,9 +185,10 @@
     height: 100%;
     margin-top: -0.25rem;
     background-color: white;
-    opacity: 0.2;
+    opacity: 0.3;
     transform: rotate(12deg) translateX(3rem);
     transition: transform 0.7s ease-out;
+    pointer-events: none;
   }
 
   .made-by-cta:hover .made-by-shine {
