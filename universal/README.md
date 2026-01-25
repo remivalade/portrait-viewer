@@ -70,6 +70,31 @@ Or use the command line:
 echo -n "remivalade" | base64
 ```
 
+### Updating Your Contact Info
+
+If you need to change your email or Telegram handle later:
+
+1. **Encode the new value** using one of the methods above:
+   ```javascript
+   // Example: changing to a new email
+   btoa('new.email')     // → "bmV3LmVtYWls"
+   btoa('newdomain.com') // → "bmV3ZG9tYWluLmNvbQ=="
+   ```
+
+2. **Update the attributes** in your HTML wherever the widget is used:
+   ```html
+   <made-by-widget
+     ...
+     email-u="bmV3LmVtYWls"
+     email-d="bmV3ZG9tYWluLmNvbQ=="
+   ></made-by-widget>
+   ```
+
+3. **To decode and verify** an existing value:
+   ```javascript
+   atob('cmVtaXZhbGFkZQ==')  // → "remivalade"
+   ```
+
 ### Usage in Hugo
 
 ```html
@@ -88,7 +113,7 @@ echo -n "remivalade" | base64
 
 ### Self-Hosting
 
-1. Copy `universal/made-by-widget.js` to your static assets folder
+1. Copy `made-by-widget.js` to your static assets folder
 2. Reference it with a `<script>` tag
 3. Add the `<made-by-widget>` element anywhere in your HTML
 
@@ -134,7 +159,7 @@ For static sites where you prefer inline HTML over a Web Component.
 ### Usage in Hugo
 
 1.  Create a new partial file: `layouts/partials/made-by.html`.
-2.  Copy the content of `universal/made-by.html` into that file.
+2.  Copy the content of `made-by.html` into that file.
 3.  Include it in your footer template (e.g., `layouts/partials/footer.html`):
     ```html
     {{ partial "made-by.html" . }}
@@ -142,7 +167,7 @@ For static sites where you prefer inline HTML over a Web Component.
 
 ### Usage in Plain HTML
 
-Simply copy the entire content of `universal/made-by.html` and paste it just before the closing `</body>` tag of your website.
+Simply copy the entire content of `made-by.html` and paste it just before the closing `</body>` tag of your website.
 
 ### Customization
 
