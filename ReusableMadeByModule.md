@@ -32,9 +32,9 @@ The most portable option. Works anywhere with a single `<script>` tag.
   name="Rémi"
   linkedin="remivalade"
   twitter="remivalade"
-  telegram="remivalade"
-  email-user="remi.valade"
-  email-domain="gmail.com"
+  tg="cmVtaXZhbGFkZQ=="
+  email-u="cmVtaS52YWxhZGU="
+  email-d="Z21haWwuY29t"
 ></made-by-widget>
 ```
 
@@ -48,12 +48,27 @@ The most portable option. Works anywhere with a single `<script>` tag.
 | `photo` | (default image) | Profile image URL |
 | `linkedin` | - | LinkedIn username |
 | `twitter` | - | X/Twitter username |
-| `telegram` | - | Telegram handle (obfuscated) |
-| `email-user` | - | Email username part (obfuscated) |
-| `email-domain` | - | Email domain part (obfuscated) |
+| `tg` | - | Telegram handle (base64 encoded) |
+| `email-u` | - | Email username part (base64 encoded) |
+| `email-d` | - | Email domain part (base64 encoded) |
 | `cta-text` | "Send an email" | CTA button text |
 | `source` | (auto: hostname) | Custom source for tracking |
 | `dark` | (auto-detects) | Force dark mode |
+
+### Encoding Values (one-time setup)
+
+Sensitive contact info uses base64 encoding to prevent bot scraping. To encode your values, open your browser console and run:
+
+```javascript
+btoa('remivalade')      // → "cmVtaXZhbGFkZQ=="   (for tg)
+btoa('remi.valade')     // → "cmVtaS52YWxhZGU="   (for email-u)
+btoa('gmail.com')       // → "Z21haWwuY29t"       (for email-d)
+```
+
+Or use the command line:
+```bash
+echo -n "remivalade" | base64
+```
 
 ### Usage in Hugo
 
@@ -64,9 +79,9 @@ The most portable option. Works anywhere with a single `<script>` tag.
   name="Rémi"
   linkedin="remivalade"
   twitter="remivalade"
-  telegram="remivalade"
-  email-user="remi.valade"
-  email-domain="gmail.com"
+  tg="cmVtaXZhbGFkZQ=="
+  email-u="cmVtaS52YWxhZGU="
+  email-d="Z21haWwuY29t"
   source="hugo-blog"
 ></made-by-widget>
 ```
@@ -87,7 +102,11 @@ Host the JS file on any CDN (jsDelivr, unpkg, Cloudflare, your own server) and r
 
 ### Security: Contact Obfuscation
 
-Email and Telegram handles are **never exposed in the HTML source**. They are constructed in JavaScript only when the user clicks, preventing bot scraping.
+Email and Telegram handles use **base64 encoding** to prevent bot scraping:
+- Values are stored as encoded strings (e.g., `tg="cmVtaXZhbGFkZQ=="`)
+- Bots scanning for patterns like `@gmail.com` or `t.me/` won't find them
+- The component decodes values only when the user clicks
+- Not cryptographically secure, but stops 99% of automated scrapers
 
 ---
 

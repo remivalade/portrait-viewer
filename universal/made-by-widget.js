@@ -11,9 +11,9 @@
  *     photo="https://..."
  *     linkedin="remivalade"
  *     twitter="remivalade"
- *     telegram="remivalade"
- *     email-user="remi.valade"
- *     email-domain="gmail.com"
+ *     tg="cmVtaXZhbGFkZQ=="
+ *     email-u="cmVtaS52YWxhZGU="
+ *     email-d="Z21haWwuY29t"
  *     source="my-site"
  *     dark
  *   ></made-by-widget>
@@ -25,12 +25,15 @@
  *   - photo: Profile image URL
  *   - linkedin: LinkedIn username (optional)
  *   - twitter: X/Twitter username (optional)
- *   - telegram: Telegram handle (optional, obfuscated)
- *   - email-user: Email username part (optional, obfuscated)
- *   - email-domain: Email domain part (optional, obfuscated)
+ *   - tg: Telegram handle, base64 encoded (optional)
+ *   - email-u: Email username part, base64 encoded (optional)
+ *   - email-d: Email domain part, base64 encoded (optional)
  *   - cta-text: Call-to-action button text (default: "Send an email")
  *   - source: Custom source for tracking (default: auto-detects hostname)
  *   - dark: Add this attribute for dark mode (or auto-detects system preference)
+ *
+ * To encode values, use: btoa('your-value') in browser console
+ *   Example: btoa('remivalade') → "cmVtaXZhbGFkZQ=="
  */
 
 class MadeByWidget extends HTMLElement {
@@ -56,6 +59,17 @@ class MadeByWidget extends HTMLElement {
     }
   }
 
+  // Helper to decode base64
+  _decode(value) {
+    if (!value) return null;
+    try {
+      return atob(value);
+    } catch (e) {
+      console.warn('MadeByWidget: Invalid base64 value');
+      return null;
+    }
+  }
+
   // Getters for attributes with defaults
   get name() { return this.getAttribute('name') || 'Rémi'; }
   get subtitle() { return this.getAttribute('subtitle') || 'Senior Marketer who likes to do things'; }
@@ -63,9 +77,9 @@ class MadeByWidget extends HTMLElement {
   get photo() { return this.getAttribute('photo') || 'https://irys.portrait.host/FEQnDav4onGWwukVL1-p1ytDMaZu6Cai0AxvUPMRemw'; }
   get linkedin() { return this.getAttribute('linkedin'); }
   get twitter() { return this.getAttribute('twitter'); }
-  get telegram() { return this.getAttribute('telegram'); }
-  get emailUser() { return this.getAttribute('email-user'); }
-  get emailDomain() { return this.getAttribute('email-domain'); }
+  get telegram() { return this._decode(this.getAttribute('tg')); }
+  get emailUser() { return this._decode(this.getAttribute('email-u')); }
+  get emailDomain() { return this._decode(this.getAttribute('email-d')); }
   get ctaText() { return this.getAttribute('cta-text') || 'Send an email'; }
   get source() {
     return this.getAttribute('source') || window.location.hostname;
